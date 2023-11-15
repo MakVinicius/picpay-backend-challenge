@@ -8,14 +8,11 @@ import com.picpay.backendchallenge.enums.UserType;
 import com.picpay.backendchallenge.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -24,7 +21,7 @@ public class TransactionServiceImpl implements TransactionService {
     private final TransactionRepository transactionRepository;
     private final UserService userService;
     private final NotificationService notificationService;
-    private final RestTemplate restTemplate;
+    private final AuthorizationService authorizationService;
 
     @Override
     public Transaction sendMoney(TransactionDTO transactionDTO) throws Exception {
@@ -44,7 +41,7 @@ public class TransactionServiceImpl implements TransactionService {
             throw new Exception("Balance not enough");
         }
 
-        if (!authorizeTransaction()) {
+        if (!this.authorizationService.authorizeTransaction(sender, transactionDTO.amount())) {
             Transaction failedTransaction = new Transaction(LocalDateTime.now(), Status.Failure, sender, receiver, transactionDTO.amount(), false);
             transactionRepository.save(failedTransaction);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Transaction not authorized");
@@ -66,18 +63,5 @@ public class TransactionServiceImpl implements TransactionService {
         Transaction savedTransaction = transactionRepository.save(newTransaction);
 
         return savedTransaction;
-    }
-
-    @Override
-    public Boolean authorizeTransaction() {
-        ResponseEntity<Map> authorized = restTemplate.getForEntity("https://run.mocky.io/v3/5794d450-d2e2-4412-8131-73d0293ac1cc", Map.class);
-
-        if (authorized.getStatusCode().equals(HttpStatus.OK)) {
-            String message = authorized.getBody().get("message").toString();
-
-            return "Autorizado".equalsIgnoreCase(message);
-        }
-
-        return false;
     }
 }

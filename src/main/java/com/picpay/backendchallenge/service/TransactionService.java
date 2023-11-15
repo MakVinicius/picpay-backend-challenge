@@ -6,6 +6,4 @@ import com.picpay.backendchallenge.entity.Transaction;
 public interface TransactionService {
 
     Transaction sendMoney(TransactionDTO transactionToUserDTO) throws Exception;
-
-    Boolean authorizeTransaction();
 }
