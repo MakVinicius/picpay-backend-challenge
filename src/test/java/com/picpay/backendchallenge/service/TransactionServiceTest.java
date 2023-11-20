@@ -12,6 +12,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
@@ -19,7 +20,6 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
 
 class TransactionServiceTest {
@@ -47,7 +47,7 @@ class TransactionServiceTest {
 
     @Test
     @DisplayName("Should create transaction successfully when everything is okay")
-    void sendMoneySuccess() throws Exception {
+    void sendMoney_Authorized() throws Exception {
         User sender = new User(
             UserType.COMMON,
             "Maria Souza",
@@ -87,8 +87,140 @@ class TransactionServiceTest {
     }
 
     @Test
+    void sendMoney_SenderNotFound() throws Exception {
+        User sender = new User(
+            UserType.COMMON,
+            "Maria Souza",
+            "maria@mail.com",
+            "password",
+            "123.456.789-11",
+            BigDecimal.valueOf(1200)
+        );
+        sender.setId(1L);
+
+        User receiver = new User(
+            UserType.COMMON,
+            "João das Neves",
+            "joao@mail.com",
+            "password",
+            "123.456.789-12",
+            BigDecimal.valueOf(1000)
+        );
+        receiver.setId(2L);
+
+        when(userService.findUserById(1L)).thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Sender not found"));
+
+        ResponseStatusException exceptionThrown = Assertions.assertThrows(ResponseStatusException.class, () -> {
+            TransactionDTO newRequest = new TransactionDTO(1L, 2L, new BigDecimal(100));
+            transactionService.sendMoney(newRequest);
+        });
+
+        Assertions.assertEquals("Sender not found", exceptionThrown.getReason());
+        assertEquals(HttpStatus.NOT_FOUND, exceptionThrown.getStatusCode());
+    }
+
+    @Test
+    void sendMoney_ReceiverNotFound() throws Exception {
+        User sender = new User(
+            UserType.COMMON,
+            "Maria Souza",
+            "maria@mail.com",
+            "password",
+            "123.456.789-11",
+            BigDecimal.valueOf(1200)
+        );
+        sender.setId(1L);
+
+        User receiver = new User(
+            UserType.COMMON,
+            "João das Neves",
+            "joao@mail.com",
+            "password",
+            "123.456.789-12",
+            BigDecimal.valueOf(1000)
+        );
+        receiver.setId(2L);
+
+        when(userService.findUserById(1L)).thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Receiver not found"));
+
+        ResponseStatusException exceptionThrown = Assertions.assertThrows(ResponseStatusException.class, () -> {
+            TransactionDTO newRequest = new TransactionDTO(1L, 2L, new BigDecimal(100));
+            transactionService.sendMoney(newRequest);
+        });
+
+        Assertions.assertEquals("Receiver not found", exceptionThrown.getReason());
+        assertEquals(HttpStatus.NOT_FOUND, exceptionThrown.getStatusCode());
+    }
+
+    @Test
+    void sendMoney_SenderIsStore() throws Exception {
+        User sender = new User(
+            UserType.STORE,
+            "Maria Souza",
+            "maria@mail.com",
+            "password",
+            "123.456.789-11",
+            BigDecimal.valueOf(1200)
+        );
+        sender.setId(1L);
+
+        User receiver = new User(
+            UserType.COMMON,
+            "João das Neves",
+            "joao@mail.com",
+            "password",
+            "123.456.789-12",
+            BigDecimal.valueOf(1000)
+        );
+        receiver.setId(2L);
+
+        when(userService.findUserById(1L)).thenReturn(Optional.of(sender));
+        when(userService.findUserById(2L)).thenReturn(Optional.of(receiver));
+
+        Exception exceptionThrown = Assertions.assertThrows(Exception.class, () -> {
+            TransactionDTO request = new TransactionDTO(1L, 2L, new BigDecimal(100));
+            transactionService.sendMoney(request);
+        });
+
+        Assertions.assertEquals("Stores can't send money to users", exceptionThrown.getMessage());
+    }
+
+    @Test
+    void sendMoney_BalanceNotEnough() throws Exception {
+        User sender = new User(
+            UserType.COMMON,
+            "Maria Souza",
+            "maria@mail.com",
+            "password",
+            "123.456.789-11",
+            BigDecimal.valueOf(10)
+        );
+        sender.setId(1L);
+
+        User receiver = new User(
+            UserType.COMMON,
+            "João das Neves",
+            "joao@mail.com",
+            "password",
+            "123.456.789-12",
+            BigDecimal.valueOf(1000)
+        );
+        receiver.setId(2L);
+
+        when(userService.findUserById(1L)).thenReturn(Optional.of(sender));
+        when(userService.findUserById(2L)).thenReturn(Optional.of(receiver));
+
+        Exception exceptionThrown = Assertions.assertThrows(Exception.class, () -> {
+            TransactionDTO request = new TransactionDTO(1L, 2L, new BigDecimal(100));
+            transactionService.sendMoney(request);
+        });
+
+        Assertions.assertEquals("Balance not enough", exceptionThrown.getMessage());
+    }
+
+    @Test
     @DisplayName("Should throw exception when transaction is not allowed")
-    void sendMoneyFailure() {
+    void sendMoney_NotAuthorized() {
         User sender = new User(
             UserType.COMMON,
             "Maria Souza",
