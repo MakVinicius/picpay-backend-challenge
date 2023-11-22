@@ -9,9 +9,9 @@
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.picpay</groupId>
-	<artifactId>picpay-backend-challenge</artifactId>
+	<artifactId>picpay-desafio-backend</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>picpay-backend-challenge</name>
+	<name>ppicpay-desafio-backend</name>
 	<description>A backend challenge from Pic Pay, a financial company</description>
 	<properties>
 		<java.version>21</java.version>
